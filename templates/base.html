@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    {% load static %}
+    <title>{% block title %}LeaveFlow{% endblock %}</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{% static 'css/global-styles.css' %}?v=10" rel="stylesheet">
+    <style>
+        /* Sidebar Styles */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 260px;
+            height: 100vh;
+            background: var(--bs-body-bg);
+            border-right: 1px solid var(--bs-border-color);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease;
+        }
+        .sidebar-brand {
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid var(--bs-border-color);
+        }
+        .sidebar-brand .logo-icon { font-size: 2rem; }
+        .sidebar-brand h4 {
+            margin: 0;
+            font-weight: 700;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .sidebar-nav {
+            flex: 1;
+            padding: 1rem 0;
+            overflow-y: auto;
+        }
+        .sidebar-nav-item {
+            display: flex;
+            align-items: center;
+            padding: 0.875rem 1.5rem;
+            color: var(--bs-body-color);
+            text-decoration: none;
+            gap: 12px;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+            margin: 2px 0;
+        }
+        .sidebar-nav-item:hover {
+            background: var(--bs-tertiary-bg);
+            color: #667eea;
+            text-decoration: none;
+        }
+        .sidebar-nav-item.active {
+            background: linear-gradient(90deg, rgba(102, 126, 234, 0.1) 0%, transparent 100%);
+            border-left-color: #667eea;
+            color: #667eea;
+            font-weight: 600;
+        }
+        .sidebar-nav-item svg { width: 20px; height: 20px; flex-shrink: 0; }
+        .sidebar-nav-label {
+            padding: 1rem 1.5rem 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--bs-secondary-color);
+            letter-spacing: 0.5px;
+        }
+        .sidebar-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--bs-border-color);
+        }
+        .sidebar-user {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0.75rem;
+            border-radius: 12px;
+            background: var(--bs-tertiary-bg);
+        }
+        .sidebar-user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            overflow: hidden;
+        }
+        .sidebar-user-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .sidebar-user-info { flex: 1; min-width: 0; }
+        .sidebar-user-name {
+            font-weight: 600;
+            font-size: 0.875rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .sidebar-user-role { font-size: 0.75rem; color: var(--bs-secondary-color); }
+        
+        /* Theme Toggle Button - Advanced */
+        .theme-toggle-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+            color: #667eea;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .theme-toggle-btn:hover {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        .theme-toggle-btn svg { transition: transform 0.3s ease; }
+        .theme-toggle-btn:hover svg { transform: rotate(20deg); }
+        
+        /* Main Content */
+        .main-content {
+            margin-left: 260px;
+            min-height: 100vh;
+            transition: margin-left 0.3s ease;
+        }
+        
+        /* Top Bar */
+        .topbar {
+            position: sticky;
+            top: 0;
+            background: var(--bs-body-bg);
+            border-bottom: 1px solid var(--bs-border-color);
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+        }
+        .topbar-title { font-size: 1.25rem; font-weight: 600; margin: 0; }
+        .topbar-actions { display: flex; align-items: center; gap: 1rem; }
+        
+        /* Mobile */
+        .sidebar-toggle {
+            display: none;
+            background: none;
+            border: none;
+            padding: 0.5rem;
+            cursor: pointer;
+        }
+        @media (max-width: 991px) {
+            .sidebar { transform: translateX(-100%); }
+            .sidebar.show { transform: translateX(0); }
+            .main-content { margin-left: 0; }
+            .sidebar-toggle { display: block; }
+            .sidebar-overlay {
+                display: none;
+                position: fixed;
+                inset: 0;
+                background: rgba(0,0,0,0.5);
+                z-index: 999;
+            }
+            .sidebar-overlay.show { display: block; }
+        }
+        
+        /* Badge Styles - Advanced */
+        .badge {
+            padding: 0.4em 0.8em;
+            font-weight: 600;
+            font-size: 0.75rem;
+            border-radius: 8px;
+            letter-spacing: 0.3px;
+        }
+        .badge.bg-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        }
+        .badge.bg-warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+            color: #fff !important;
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+        }
+        .badge.bg-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+        }
+        .badge.bg-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        }
+        .badge.bg-info {
+            background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%) !important;
+            box-shadow: 0 2px 8px rgba(6, 182, 212, 0.3);
+        }
+        .badge.bg-secondary {
+            background: linear-gradient(135deg, #64748b 0%, #475569 100%) !important;
+            box-shadow: 0 2px 8px rgba(100, 116, 139, 0.3);
+        }
+    </style>
+</head>
+<body>
+    {% block navbar %}
+    {% if user.is_authenticated %}
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    
+    <aside class="sidebar" id="sidebar">
+        <a href="{% url 'home' %}" class="sidebar-brand" style="text-decoration: none;">
+            <span class="logo-icon">📋</span>
+            <h4>LeaveFlow</h4>
+        </a>
+        
+        <nav class="sidebar-nav">
+            <div class="sidebar-nav-label">Main Menu</div>
+            
+            {% if user.role == 'admin' %}
+            <a href="{% url 'admin_dashboard' %}" class="sidebar-nav-item {% if request.resolver_match.url_name == 'admin_dashboard' %}active{% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16"><path d="M0 1.5A1.5 1.5 0 0 1 1.5 0h2A1.5 1.5 0 0 1 5 1.5v2A1.5 1.5 0 0 1 3.5 5h-2A1.5 1.5 0 0 1 0 3.5zM1.5 1a.5.5 0 0 0-.5.5v2a.5.5 0 0 0 .5.5h2a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 0-.5-.5z"/></svg>
+                Dashboard
+            </a>
+            <a href="{% url 'all_users' %}" class="sidebar-nav-item {% if request.resolver_match.url_name == 'all_users' %}active{% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16"><path d="M15 14s1 0 1-1-1-4-5-4-5 3-5 4 1 1 1 1zm-7.978-1L7 12.996c.001-.264.167-1.03.76-1.72C8.312 10.629 9.282 10 11 10c1.717 0 2.687.63 3.24 1.276.593.69.758 1.457.76 1.72l-.008.002zM11 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4m3-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0M6.936 9.28a6 6 0 0 0-1.23-.247A7 7 0 0 0 5 9c-4 0-5 3-5 4q0 1 1 1h4.216A2.24 2.24 0 0 1 5 13c0-1.01.377-2.042 1.09-2.904.243-.294.526-.569.846-.816M4.92 10A5.5 5.5 0 0 0 4 13H1c0-.26.164-1.03.76-1.724.545-.636 1.492-1.256 3.16-1.275ZM1.5 5.5a3 3 0 1 1 6 0 3 3 0 0 1-6 0m3-2a2 2 0 1 0 0 4 2 2 0 0 0 0-4"/></svg>
+                All Users
+            </a>
+            <a href="{% url 'all_leaves' %}" class="sidebar-nav-item {% if request.resolver_match.url_name == 'all_leaves' %}active{% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16"><path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5M1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4z"/></svg>
+                All Leaves
+            </a>
+            {% elif user.role == 'manager' %}
+            <a href="{% url 'manager_dashboard' %}" class="sidebar-nav-item {% if request.resolver_match.url_name == 'manager_dashboard' %}active{% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16"><path d="M0 1.5A1.5 1.5 0 0 1 1.5 0h2A1.5 1.5 0 0 1 5 1.5v2A1.5 1.5 0 0 1 3.5 5h-2A1.5 1.5 0 0 1 0 3.5zM1.5 1a.5.5 0 0 0-.5.5v2a.5.5 0 0 0 .5.5h2a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 0-.5-.5z"/></svg>
+                Dashboard
+            </a>
+            <a href="{% url 'all_leaves' %}" class="sidebar-nav-item {% if request.resolver_match.url_name == 'all_leaves' %}active{% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16"><path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5M1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4z"/></svg>
+                Team Leaves
+            </a>
+            <a href="{% url 'team_history' %}" class="sidebar-nav-item {% if request.resolver_match.url_name == 'team_history' %}active{% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16"><path d="M8.515 1.019A7 7 0 0 0 8 1V0a8 8 0 0 1 .589.022zm2.004.45a7 7 0 0 0-.985-.299l.219-.976q.576.129 1.126.342zm1.37.71a7 7 0 0 0-.439-.27l.493-.87a8 8 0 0 1 .979.654l-.615.789a7 7 0 0 0-.418-.302zm1.834 1.79a7 7 0 0 0-.653-.796l.724-.69q.406.429.747.91zm.744 1.352a7 7 0 0 0-.214-.468l.893-.45a8 8 0 0 1 .45 1.088l-.95.313a7 7 0 0 0-.179-.483m.53 2.507a7 7 0 0 0-.1-1.025l.985-.17q.1.58.116 1.17zm-.131 1.538q.05-.254.081-.51l.993.123a8 8 0 0 1-.23 1.155l-.964-.267q.069-.247.12-.501m-.952 2.379q.276-.436.486-.908l.914.405q-.24.54-.555 1.038zm-.964 1.205q.183-.183.35-.378l.758.653a8 8 0 0 1-.401.432z"/><path d="M8 1a7 7 0 1 0 4.95 11.95l.707.707A8.001 8.001 0 1 1 8 0z"/><path d="M7.5 3a.5.5 0 0 1 .5.5v5.21l3.248 1.856a.5.5 0 0 1-.496.868l-3.5-2A.5.5 0 0 1 7 9V3.5a.5.5 0 0 1 .5-.5"/></svg>
+                History
+            </a>
+            {% else %}
+            <a href="{% url 'employee_dashboard' %}" class="sidebar-nav-item {% if request.resolver_match.url_name == 'employee_dashboard' %}active{% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16"><path d="M0 1.5A1.5 1.5 0 0 1 1.5 0h2A1.5 1.5 0 0 1 5 1.5v2A1.5 1.5 0 0 1 3.5 5h-2A1.5 1.5 0 0 1 0 3.5zM1.5 1a.5.5 0 0 0-.5.5v2a.5.5 0 0 0 .5.5h2a.5.5 0 0 0 .5-.5v-2a.5.5 0 0 0-.5-.5z"/></svg>
+                Dashboard
+            </a>
+            <a href="{% url 'request_leave' %}" class="sidebar-nav-item {% if request.resolver_match.url_name == 'request_leave' %}active{% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/></svg>
+                Request Leave
+            </a>
+            <a href="{% url 'my_leaves' %}" class="sidebar-nav-item {% if request.resolver_match.url_name == 'my_leaves' %}active{% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16"><path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5M1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4z"/></svg>
+                My Leaves
+            </a>
+            {% endif %}
+            
+            {% if user.role == 'employee' or user.role == 'manager' %}
+            <div class="sidebar-nav-label">Communication</div>
+            <a href="{% url 'chat_page' %}" class="sidebar-nav-item {% if request.resolver_match.url_name == 'chat_page' %}active{% endif %}">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16"><path d="M14 1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4.414A2 2 0 0 0 3 11.586l-2 2V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12.793a.5.5 0 0 0 .854.353l2.853-2.853A1 1 0 0 1 4.414 12H14a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z"/></svg>
+                Chat
+            </a>
+            {% endif %}
+            
+            <div class="sidebar-nav-label">Settings</div>
+            <a href="javascript:void(0);" id="openProfileBtn" class="sidebar-nav-item">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6m2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0m4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4m-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.289 10 8 10s-3.516.68-4.168 1.332c-.678.678-.83 1.418-.832 1.664z"/></svg>
+                Profile
+            </a>
+            <a href="{% url 'custom_logout' %}" class="sidebar-nav-item text-danger">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M10 12.5a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-9a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v2a.5.5 0 0 0 1 0v-2A1.5 1.5 0 0 0 9.5 2h-8A1.5 1.5 0 0 0 0 3.5v9A1.5 1.5 0 0 0 1.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-2a.5.5 0 0 0-1 0z"/><path fill-rule="evenodd" d="M15.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 0 0-.708.708L14.293 7.5H5.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708z"/></svg>
+                Logout
+            </a>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <div class="sidebar-user">
+                <div class="sidebar-user-avatar">
+                    {% if user.profile_picture %}
+                        <img src="{{ user.profile_picture.url }}" alt="{{ user.full_name }}">
+                    {% else %}
+                        {{ user.full_name|default:user.email|slice:":1"|upper }}
+                    {% endif %}
+                </div>
+                <div class="sidebar-user-info">
+                    <div class="sidebar-user-name">{{ user.full_name|default:user.email|truncatechars:15 }}</div>
+                    <div class="sidebar-user-role">{{ user.get_role_display }}</div>
+                </div>
+                <button type="button" class="theme-toggle-btn" id="themeToggleBtn" title="Toggle theme">
+                    <svg id="sunIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M8 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6m0 1a4 4 0 1 0 0-8 4 4 0 0 0 0 8M8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0m0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13m8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5M3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8"/>
+                    </svg>
+                    <svg id="moonIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16" style="display: none;">
+                        <path d="M6 .278a.77.77 0 0 1 .08.858 7.2 7.2 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277q.792-.001 1.533-.16a.79.79 0 0 1 .81.316.73.73 0 0 1-.031.893A8.35 8.35 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.266 2.114 1.312 5.124.06A.75.75 0 0 1 6 .278"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </aside>
+    
+    <main class="main-content">
+        <div class="topbar">
+            <button class="sidebar-toggle" id="sidebarToggleBtn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-4a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5"/></svg>
+            </button>
+            <h1 class="topbar-title">{% block page_title %}Dashboard{% endblock %}</h1>
+            <div class="topbar-actions">
+                <span class="text-muted d-none d-md-inline">{{ user.email }}</span>
+            </div>
+        </div>
+    {% endif %}
+    {% endblock %}
+
+    {% block container %}
+    <div class="p-4">
+        {% block content %}{% endblock %}
+    </div>
+    {% if user.is_authenticated %}
+    </main>
+    {% endif %}
+    {% endblock %}
+
+    {% if user.is_authenticated %}
+    <!-- Profile Modal - Using Bootstrap Modal for reliability -->
+    <div class="modal fade" id="profileModal" tabindex="-1" aria-labelledby="profileModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="background: linear-gradient(145deg, #0f1724 0%, #1a2332 100%); border: 1px solid rgba(255,255,255,0.08); border-radius: 24px;">
+                <div class="modal-header" style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%); border-bottom: 1px solid rgba(102, 126, 234, 0.2); border-radius: 24px 24px 0 0;">
+                    <h5 class="modal-title" id="profileModalLabel" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; font-weight: 700;">Profile Settings</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="post" action="{% url 'profile' %}" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="modal-body" style="color: #e6eef6;">
+                        <!-- Tabs -->
+                        <ul class="nav nav-tabs mb-4" id="profileTabs" role="tablist" style="border-bottom: 1px solid rgba(255,255,255,0.1);">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profilePane" type="button" role="tab" style="color: #667eea; background: transparent; border: none;">PROFILE</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="security-tab" data-bs-toggle="tab" data-bs-target="#securityPane" type="button" role="tab" style="color: #94a3b8; background: transparent; border: none;">SECURITY</button>
+                            </li>
+                        </ul>
+                        
+                        <div class="tab-content" id="profileTabContent">
+                            <!-- Profile Tab -->
+                            <div class="tab-pane fade show active" id="profilePane" role="tabpanel">
+                                <div class="d-flex align-items-center gap-3 mb-4 p-3" style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); border-radius: 16px; border: 1px dashed rgba(102, 126, 234, 0.3);">
+                                    <div style="width: 70px; height: 70px; border-radius: 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 1.75rem; font-weight: 700; overflow: hidden;">
+                                        {% if user.profile_picture %}
+                                            <img src="{{ user.profile_picture.url }}" alt="{{ user.full_name }}" style="width: 100%; height: 100%; object-fit: cover;">
+                                        {% else %}
+                                            {{ user.full_name|default:user.email|slice:":1"|upper }}
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <p class="mb-1" style="color: #94a3b8; font-size: 0.85rem;">Upload a profile photo</p>
+                                        <label for="profile_picture_input" class="btn btn-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 8px; cursor: pointer;">UPLOAD</label>
+                                        <input type="file" id="profile_picture_input" name="profile_picture" accept="image/*" style="display: none;">
+                                    </div>
+                                </div>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label" style="color: #94a3b8; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;">Full Name</label>
+                                        <input type="text" name="full_name" class="form-control" value="{{ user.full_name }}" placeholder="Enter your name" style="background: rgba(255,255,255,0.03); border: 2px solid rgba(255,255,255,0.08); color: #e6eef6; border-radius: 10px;">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label" style="color: #94a3b8; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;">Email</label>
+                                        <input type="email" name="email" class="form-control" value="{{ user.email }}" placeholder="Enter your email" style="background: rgba(255,255,255,0.03); border: 2px solid rgba(255,255,255,0.08); color: #e6eef6; border-radius: 10px;">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label" style="color: #94a3b8; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;">Phone (10 digits)</label>
+                                        <input type="tel" name="phone" id="phoneInput" class="form-control" value="{{ user.phone }}" placeholder="Enter 10 digit phone" maxlength="10" pattern="[0-9]{10}" style="background: rgba(255,255,255,0.03); border: 2px solid rgba(255,255,255,0.08); color: #e6eef6; border-radius: 10px;">
+                                        <small id="phoneError" style="color: #ef4444; display: none; font-size: 0.75rem;">Phone must be exactly 10 digits</small>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label" style="color: #94a3b8; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;">Department</label>
+                                        <input type="text" name="department" class="form-control" value="{{ user.department }}" placeholder="Enter department" style="background: rgba(255,255,255,0.03); border: 2px solid rgba(255,255,255,0.08); color: #e6eef6; border-radius: 10px;">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Security Tab -->
+                            <div class="tab-pane fade" id="securityPane" role="tabpanel">
+                                <div class="alert d-flex align-items-center gap-2 mb-4" style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.12) 0%, rgba(118, 75, 162, 0.12) 100%); border: 1px solid rgba(102, 126, 234, 0.2); border-radius: 12px; color: #e6eef6;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#667eea" viewBox="0 0 16 16"><path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2m3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2"/></svg>
+                                    <span>Change your password to keep your account secure</span>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label" style="color: #94a3b8; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;">Current Password</label>
+                                    <div class="position-relative">
+                                        <input type="password" name="current_password" id="currentPassword" class="form-control" placeholder="Enter current password" style="background: rgba(255,255,255,0.03); border: 2px solid rgba(255,255,255,0.08); color: #e6eef6; border-radius: 10px; padding-right: 45px;">
+                                        <button type="button" class="btn position-absolute" onclick="togglePassword('currentPassword', this)" style="right: 5px; top: 50%; transform: translateY(-50%); background: transparent; border: none; color: #94a3b8; padding: 0.25rem 0.5rem;">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16" class="eye-icon"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8M1.173 8a13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0"/></svg>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16" class="eye-slash-icon" style="display: none;"><path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7 7 0 0 0-2.79.588l.77.771A6 6 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755q-.247.248-.517.486z"/><path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829"/><path d="M3.35 5.47q-.27.24-.518.487A13 13 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7 7 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12z"/></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label" style="color: #94a3b8; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;">New Password</label>
+                                    <div class="position-relative">
+                                        <input type="password" name="new_password" id="newPassword" class="form-control" placeholder="Enter new password" style="background: rgba(255,255,255,0.03); border: 2px solid rgba(255,255,255,0.08); color: #e6eef6; border-radius: 10px; padding-right: 45px;">
+                                        <button type="button" class="btn position-absolute" onclick="togglePassword('newPassword', this)" style="right: 5px; top: 50%; transform: translateY(-50%); background: transparent; border: none; color: #94a3b8; padding: 0.25rem 0.5rem;">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16" class="eye-icon"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8M1.173 8a13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0"/></svg>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16" class="eye-slash-icon" style="display: none;"><path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7 7 0 0 0-2.79.588l.77.771A6 6 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755q-.247.248-.517.486z"/><path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829"/><path d="M3.35 5.47q-.27.24-.518.487A13 13 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7 7 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12z"/></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label" style="color: #94a3b8; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;">Confirm Password</label>
+                                    <div class="position-relative">
+                                        <input type="password" name="confirm_password" id="confirmPassword" class="form-control" placeholder="Confirm new password" style="background: rgba(255,255,255,0.03); border: 2px solid rgba(255,255,255,0.08); color: #e6eef6; border-radius: 10px; padding-right: 45px;">
+                                        <button type="button" class="btn position-absolute" onclick="togglePassword('confirmPassword', this)" style="right: 5px; top: 50%; transform: translateY(-50%); background: transparent; border: none; color: #94a3b8; padding: 0.25rem 0.5rem;">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16" class="eye-icon"><path d="M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8M1.173 8a13 13 0 0 1 1.66-2.043C4.12 4.668 5.88 3.5 8 3.5s3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755C11.879 11.332 10.119 12.5 8 12.5s-3.879-1.168-5.168-2.457A13 13 0 0 1 1.172 8z"/><path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0"/></svg>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16" class="eye-slash-icon" style="display: none;"><path d="M13.359 11.238C15.06 9.72 16 8 16 8s-3-5.5-8-5.5a7 7 0 0 0-2.79.588l.77.771A6 6 0 0 1 8 3.5c2.12 0 3.879 1.168 5.168 2.457A13 13 0 0 1 14.828 8q-.086.13-.195.288c-.335.48-.83 1.12-1.465 1.755q-.247.248-.517.486z"/><path d="M11.297 9.176a3.5 3.5 0 0 0-4.474-4.474l.823.823a2.5 2.5 0 0 1 2.829 2.829zm-2.943 1.299.822.822a3.5 3.5 0 0 1-4.474-4.474l.823.823a2.5 2.5 0 0 0 2.829 2.829"/><path d="M3.35 5.47q-.27.24-.518.487A13 13 0 0 0 1.172 8l.195.288c.335.48.83 1.12 1.465 1.755C4.121 11.332 5.881 12.5 8 12.5c.716 0 1.39-.133 2.02-.36l.77.772A7 7 0 0 1 8 13.5C3 13.5 0 8 0 8s.939-1.721 2.641-3.238l.708.709zm10.296 8.884-12-12 .708-.708 12 12z"/></svg>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="background: rgba(0,0,0,0.2); border-top: 1px solid rgba(255,255,255,0.06); border-radius: 0 0 24px 24px;">
+                        <button type="button" class="btn" data-bs-dismiss="modal" style="border: 2px solid rgba(255,255,255,0.1); color: #e6eef6; border-radius: 10px;">Cancel</button>
+                        <button type="submit" class="btn" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 10px;">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Theme handling
+            var savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-bs-theme', savedTheme);
+            updateThemeIcons(savedTheme);
+            
+            // Theme toggle button
+            var themeBtn = document.getElementById('themeToggleBtn');
+            if (themeBtn) {
+                themeBtn.addEventListener('click', function() {
+                    var current = document.documentElement.getAttribute('data-bs-theme');
+                    var newTheme = current === 'light' ? 'dark' : 'light';
+                    document.documentElement.setAttribute('data-bs-theme', newTheme);
+                    localStorage.setItem('theme', newTheme);
+                    updateThemeIcons(newTheme);
+                });
+            }
+            
+            // Sidebar toggle
+            var sidebarToggle = document.getElementById('sidebarToggleBtn');
+            var sidebar = document.getElementById('sidebar');
+            var overlay = document.getElementById('sidebarOverlay');
+            if (sidebarToggle && sidebar) {
+                sidebarToggle.addEventListener('click', function() {
+                    sidebar.classList.toggle('show');
+                    if (overlay) overlay.classList.toggle('show');
+                });
+            }
+            if (overlay) {
+                overlay.addEventListener('click', function() {
+                    sidebar.classList.remove('show');
+                    overlay.classList.remove('show');
+                });
+            }
+            
+            // Profile modal - using Bootstrap modal
+            var openProfileBtn = document.getElementById('openProfileBtn');
+            var profileModal = document.getElementById('profileModal');
+            if (openProfileBtn && profileModal) {
+                var bsModal = new bootstrap.Modal(profileModal);
+                openProfileBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    bsModal.show();
+                });
+            }
+            
+            // Phone number validation - only 10 digits
+            var phoneInput = document.getElementById('phoneInput');
+            var phoneError = document.getElementById('phoneError');
+            if (phoneInput) {
+                // Only allow digits
+                phoneInput.addEventListener('input', function(e) {
+                    this.value = this.value.replace(/[^0-9]/g, '');
+                    if (this.value.length > 10) {
+                        this.value = this.value.slice(0, 10);
+                    }
+                    validatePhone();
+                });
+                
+                // Validate on blur
+                phoneInput.addEventListener('blur', validatePhone);
+                
+                // Validate before form submit
+                var profileForm = profileModal ? profileModal.querySelector('form') : null;
+                if (profileForm) {
+                    profileForm.addEventListener('submit', function(e) {
+                        if (!validatePhone()) {
+                            e.preventDefault();
+                            phoneInput.focus();
+                        }
+                    });
+                }
+            }
+            
+            function validatePhone() {
+                if (!phoneInput || !phoneError) return true;
+                var phone = phoneInput.value.trim();
+                if (phone.length > 0 && phone.length !== 10) {
+                    phoneError.style.display = 'block';
+                    phoneInput.style.borderColor = '#ef4444';
+                    return false;
+                } else {
+                    phoneError.style.display = 'none';
+                    phoneInput.style.borderColor = 'rgba(255,255,255,0.08)';
+                    return true;
+                }
+            }
+        });
+        
+        // Toggle password visibility
+        function togglePassword(inputId, btn) {
+            var input = document.getElementById(inputId);
+            var eyeIcon = btn.querySelector('.eye-icon');
+            var eyeSlashIcon = btn.querySelector('.eye-slash-icon');
+            
+            if (input.type === 'password') {
+                input.type = 'text';
+                eyeIcon.style.display = 'none';
+                eyeSlashIcon.style.display = 'block';
+            } else {
+                input.type = 'password';
+                eyeIcon.style.display = 'block';
+                eyeSlashIcon.style.display = 'none';
+            }
+        }
+        
+        function updateThemeIcons(theme) {
+            var sunIcon = document.getElementById('sunIcon');
+            var moonIcon = document.getElementById('moonIcon');
+            if (sunIcon && moonIcon) {
+                if (theme === 'dark') {
+                    sunIcon.style.display = 'none';
+                    moonIcon.style.display = 'block';
+                } else {
+                    sunIcon.style.display = 'block';
+                    moonIcon.style.display = 'none';
+                }
+            }
+        }
+    </script>
+</body>
+</html>

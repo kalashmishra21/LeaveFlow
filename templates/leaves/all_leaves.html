@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block title %}All Leaves - LeaveFlow{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container-fluid">
+        <h2 class="header-title">All Leave Requests</h2>
+    </div>
+</div>
+
+<div class="container-fluid">
+    <!-- Filter Buttons -->
+    <div class="mb-3">
+        <a href="{% url 'all_leaves' %}" class="btn btn-sm {% if not status_filter %}btn-primary{% else %}btn-outline-primary{% endif %}">All</a>
+        <a href="{% url 'all_leaves' %}?status=pending" class="btn btn-sm {% if status_filter == 'pending' %}btn-warning{% else %}btn-outline-warning{% endif %}">Pending</a>
+        <a href="{% url 'all_leaves' %}?status=approved" class="btn btn-sm {% if status_filter == 'approved' %}btn-success{% else %}btn-outline-success{% endif %}">Approved</a>
+        <a href="{% url 'all_leaves' %}?status=rejected" class="btn btn-sm {% if status_filter == 'rejected' %}btn-danger{% else %}btn-outline-danger{% endif %}">Rejected</a>
+    </div>
+
+    {% if leaves %}
+    <div class="table-card">
+        <div class="table-responsive">
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Type</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Days</th>
+                        <th>Status</th>
+                        {% if user.role == 'manager' %}<th>Actions</th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for leave in leaves %}
+                    <tr>
+                        <td>{{ leave.employee.full_name }}</td>
+                        <td>{{ leave.leave_type.name }}</td>
+                        <td>{{ leave.start_date|date:"M d, Y" }}</td>
+                        <td>{{ leave.end_date|date:"M d, Y" }}</td>
+                        <td>{{ leave.total_days }}</td>
+                        <td>
+                            <span class="badge {% if leave.status == 'pending' %}bg-warning{% elif leave.status == 'approved' %}bg-success{% elif leave.status == 'rejected' %}bg-danger{% else %}bg-secondary{% endif %}">
+                                {{ leave.get_status_display }}
+                            </span>
+                        </td>
+                        {% if user.role == 'manager' %}
+                        <td>
+                            {% if leave.status == 'pending' %}
+                            <form method="post" action="{% url 'approve_leave' leave.id %}" style="display: inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="approve">
+                                <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                            </form>
+                            <form method="post" action="{% url 'approve_leave' leave.id %}" style="display: inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="reject">
+                                <button type="submit" class="btn btn-sm btn-danger">Reject</button>
+                            </form>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>No leave requests found</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

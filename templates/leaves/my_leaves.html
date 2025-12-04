@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block title %}My Leaves - LeaveFlow{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div class="container-fluid">
+        <h2 class="header-title">My Leaves
+            <a href="{% url 'request_leave' %}" class="new-request-btn">Request Leave</a>
+        </h2>
+    </div>
+</div>
+
+<div class="container-fluid">
+    {% if leaves %}
+    <div class="table-card">
+        <div class="table-responsive">
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Dates</th>
+                        <th>Days</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for leave in leaves %}
+                    <tr>
+                        <td>{{ leave.leave_type.name }}</td>
+                        <td>{{ leave.start_date|date:"M d, Y" }} - {{ leave.end_date|date:"M d, Y" }}</td>
+                        <td>{{ leave.total_days }}</td>
+                        <td><span class="badge {% if leave.status == 'pending' %}bg-warning{% elif leave.status == 'approved' %}bg-success{% elif leave.status == 'rejected' %}bg-danger{% else %}bg-secondary{% endif %}">{{ leave.get_status_display }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <p>No leaves yet</p>
+        <a href="{% url 'request_leave' %}" class="new-request-btn">Request Your First Leave</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

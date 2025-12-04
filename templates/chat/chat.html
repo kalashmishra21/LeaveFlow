@@ -1,0 +1,375 @@
+{% extends 'base.html' %}
+
+{% block title %}Chat - LeaveFlow{% endblock %}
+{% block page_title %}💬 Chat{% endblock %}
+
+{% block content %}
+<div class="chat-container">
+    <!-- User List Sidebar -->
+    <div class="chat-sidebar">
+        <div class="chat-sidebar-header">
+            <h6>{% if user.role == 'employee' %}Managers{% else %}Team Members{% endif %}</h6>
+            <div class="chat-search">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"/>
+                </svg>
+                <input type="text" id="userSearch" placeholder="Search..." autocomplete="off">
+            </div>
+        </div>
+        <div class="chat-user-list" id="chatUserList">
+            <div class="chat-loading">
+                <div class="chat-loading-spinner"></div>
+                <span>Loading contacts...</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Chat Main Area -->
+    <div class="chat-main">
+        <!-- Chat Header -->
+        <div class="chat-header" id="chatHeader">
+            <div class="chat-header-user">
+                <div class="chat-header-avatar" id="chatHeaderAvatar">
+                    <span id="chatAvatarLetter">?</span>
+                </div>
+                <div class="chat-header-info">
+                    <h5 id="chatWithName">Select a conversation</h5>
+                    <span id="chatWithEmail" class="chat-status">Choose someone to start chatting</span>
+                </div>
+            </div>
+
+        </div>
+        
+        <!-- Chat Messages -->
+        <div class="chat-messages" id="chatMessages">
+            <div class="chat-empty-state">
+                <div class="chat-empty-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M14 1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4.414A2 2 0 0 0 3 11.586l-2 2V2a1 1 0 0 1 1-1zM2 0a2 2 0 0 0-2 2v12.793a.5.5 0 0 0 .854.353l2.853-2.853A1 1 0 0 1 4.414 12H14a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z"/>
+                        <path d="M3 3.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5M3 6a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9A.5.5 0 0 1 3 6m0 2.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5"/>
+                    </svg>
+                </div>
+                <h4>Start a Conversation</h4>
+                <p>Select a {% if user.role == 'employee' %}manager{% else %}team member{% endif %} from the list to begin chatting</p>
+            </div>
+        </div>
+        
+        <!-- File Preview -->
+        <div class="chat-file-preview" id="filePreview" style="display: none;">
+            <div class="file-preview-content">
+                <img id="imagePreview" src="" alt="Preview" style="display: none;">
+                <div id="pdfPreview" class="pdf-preview-icon" style="display: none;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2M9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5z"/>
+                        <path d="M4.603 14.087a.8.8 0 0 1-.438-.42c-.195-.388-.13-.776.08-1.102.198-.307.526-.568.897-.787a7.7 7.7 0 0 1 1.482-.645 20 20 0 0 0 1.062-2.227 7.3 7.3 0 0 1-.43-1.295c-.086-.4-.119-.796-.046-1.136.075-.354.274-.672.65-.823.192-.077.4-.12.602-.077a.7.7 0 0 1 .477.365c.088.164.12.356.127.538.007.188-.012.396-.047.614-.084.51-.27 1.134-.52 1.794a11 11 0 0 0 .98 1.686 5.8 5.8 0 0 1 1.334.05c.364.066.734.195.96.465.12.144.193.32.2.518.007.192-.047.382-.138.563a1.04 1.04 0 0 1-.354.416.86.86 0 0 1-.51.138c-.331-.014-.654-.196-.933-.417a5.7 5.7 0 0 1-.911-.95 11.7 11.7 0 0 0-1.997.406 11.3 11.3 0 0 1-1.02 1.51c-.292.35-.609.656-.927.787a.8.8 0 0 1-.58.029z"/>
+                    </svg>
+                </div>
+                <span id="fileName" class="file-name"></span>
+            </div>
+            <button class="file-remove-btn" id="removeFileBtn" title="Remove">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708"/>
+                </svg>
+            </button>
+        </div>
+        
+        <!-- Chat Input -->
+        <div class="chat-input-area" id="chatInputArea">
+            <div class="chat-input-container">
+                <input type="file" id="fileInput" accept="image/*,.pdf" style="display: none;">
+                <button class="chat-attach-btn" id="attachBtn" title="Attach File (Image or PDF)">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M4.5 3a2.5 2.5 0 0 1 5 0v9a1.5 1.5 0 0 1-3 0V5a.5.5 0 0 1 1 0v7a.5.5 0 0 0 1 0V3a1.5 1.5 0 1 0-3 0v9a2.5 2.5 0 0 0 5 0V5a.5.5 0 0 1 1 0v7a3.5 3.5 0 1 1-7 0z"/>
+                    </svg>
+                </button>
+                <input type="text" id="chatInput" class="chat-input" placeholder="Type your message..." autocomplete="off" disabled>
+                <button class="chat-send-btn" id="sendBtn" type="button" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576zm6.787-8.201L1.591 6.602l4.339 2.76z"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="chat-input-hint">Press Enter to send • Attach images or PDFs</div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentChatUser = null;
+let lastMessageId = 0;
+let pollInterval = null;
+let allUsers = [];
+let selectedFile = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadChatUsers();
+    
+    document.getElementById('sendBtn').addEventListener('click', sendMessage);
+    document.getElementById('chatInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') sendMessage();
+    });
+    
+    // Search functionality
+    document.getElementById('userSearch').addEventListener('input', function(e) {
+        filterUsers(e.target.value);
+    });
+    
+    // File attachment
+    document.getElementById('attachBtn').addEventListener('click', function() {
+        if (currentChatUser) {
+            document.getElementById('fileInput').click();
+        }
+    });
+    
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            selectedFile = file;
+            showFilePreview(file);
+        }
+    });
+    
+    document.getElementById('removeFileBtn').addEventListener('click', function() {
+        clearFileSelection();
+    });
+});
+
+function loadChatUsers() {
+    fetch('/chat/users/')
+        .then(res => res.json())
+        .then(data => {
+            allUsers = data.users;
+            renderUserList(allUsers);
+        });
+}
+
+function filterUsers(query) {
+    const filtered = allUsers.filter(user => 
+        user.name.toLowerCase().includes(query.toLowerCase()) ||
+        user.email.toLowerCase().includes(query.toLowerCase())
+    );
+    renderUserList(filtered);
+}
+
+function renderUserList(users) {
+    const list = document.getElementById('chatUserList');
+    if (users.length === 0) {
+        list.innerHTML = `
+            <div class="chat-empty-users">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M15 14s1 0 1-1-1-4-5-4-5 3-5 4 1 1 1 1zm-7.978-1L7 12.996c.001-.264.167-1.03.76-1.72C8.312 10.629 9.282 10 11 10c1.717 0 2.687.63 3.24 1.276.593.69.758 1.457.76 1.72l-.008.002zM11 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4m3-2a3 3 0 1 1-6 0 3 3 0 0 1 6 0M6.936 9.28a6 6 0 0 0-1.23-.247A7 7 0 0 0 5 9c-4 0-5 3-5 4q0 1 1 1h4.216A2.24 2.24 0 0 1 5 13c0-1.01.377-2.042 1.09-2.904.243-.294.526-.569.846-.816M4.92 10A5.5 5.5 0 0 0 4 13H1c0-.26.164-1.03.76-1.724.545-.636 1.492-1.256 3.16-1.275ZM1.5 5.5a3 3 0 1 1 6 0 3 3 0 0 1-6 0m3-2a2 2 0 1 0 0 4 2 2 0 0 0 0-4"/>
+                </svg>
+                <p>No contacts found</p>
+            </div>
+        `;
+        return;
+    }
+    list.innerHTML = users.map(user => `
+        <div class="chat-user-item ${currentChatUser === user.id ? 'active' : ''}" onclick="selectUser(${user.id}, '${user.name.replace(/'/g, "\\'")}', '${user.email}')">
+            <div class="chat-user-avatar">
+                <span>${user.name.charAt(0).toUpperCase()}</span>
+                <div class="chat-user-status online"></div>
+            </div>
+            <div class="chat-user-info">
+                <div class="chat-user-name">${user.name}</div>
+                <div class="chat-user-email">${user.email}</div>
+            </div>
+            ${user.unread > 0 ? `<div class="chat-unread-badge">${user.unread}</div>` : ''}
+        </div>
+    `).join('');
+}
+
+function selectUser(userId, userName, userEmail) {
+    currentChatUser = userId;
+    document.getElementById('chatWithName').textContent = userName;
+    document.getElementById('chatWithEmail').textContent = userEmail;
+    document.getElementById('chatAvatarLetter').textContent = userName.charAt(0).toUpperCase();
+
+    
+    // Enable input
+    document.getElementById('chatInput').disabled = false;
+    document.getElementById('sendBtn').disabled = false;
+    document.getElementById('chatInput').focus();
+    
+    document.querySelectorAll('.chat-user-item').forEach(el => el.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    
+    loadMessages(userId);
+    
+    if (pollInterval) clearInterval(pollInterval);
+    pollInterval = setInterval(() => checkNewMessages(userId), 2000);
+}
+
+function loadMessages(userId) {
+    fetch(`/chat/messages/${userId}/`)
+        .then(res => res.json())
+        .then(data => {
+            const container = document.getElementById('chatMessages');
+            if (data.messages.length === 0) {
+                container.innerHTML = `
+                    <div class="chat-start-conversation">
+                        <div class="chat-start-icon">👋</div>
+                        <h5>Start the conversation!</h5>
+                        <p>Send your first message to begin chatting</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let currentDate = '';
+            let html = '';
+            
+            data.messages.forEach(msg => {
+                lastMessageId = Math.max(lastMessageId, msg.id);
+                
+                // Add date separator
+                if (msg.date !== currentDate) {
+                    currentDate = msg.date;
+                    html += `<div class="chat-date-separator"><span>${msg.date}</span></div>`;
+                }
+                
+                html += renderMessageBubble(msg, msg.is_mine);
+            });
+            
+            container.innerHTML = html;
+            container.scrollTop = container.scrollHeight;
+        });
+}
+
+function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+    
+    if (!currentChatUser) return;
+    if (!message && !selectedFile) return;
+    
+    const sendBtn = document.getElementById('sendBtn');
+    sendBtn.disabled = true;
+    
+    const formData = new FormData();
+    formData.append('receiver_id', currentChatUser);
+    formData.append('message', message);
+    
+    if (selectedFile) {
+        formData.append('attachment', selectedFile);
+    }
+    
+    fetch('/chat/send/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            input.value = '';
+            clearFileSelection();
+            
+            const container = document.getElementById('chatMessages');
+            
+            // Remove empty state if exists
+            const emptyState = container.querySelector('.chat-start-conversation');
+            if (emptyState) emptyState.remove();
+            
+            container.innerHTML += renderMessageBubble(data.message, true);
+            container.scrollTop = container.scrollHeight;
+            lastMessageId = data.message.id;
+        }
+        sendBtn.disabled = false;
+    })
+    .catch(() => {
+        sendBtn.disabled = false;
+    });
+}
+
+function checkNewMessages(userId) {
+    fetch(`/chat/check/${userId}/?last_id=${lastMessageId}`)
+        .then(res => res.json())
+        .then(data => {
+            if (data.messages.length > 0) {
+                const container = document.getElementById('chatMessages');
+                data.messages.forEach(msg => {
+                    lastMessageId = Math.max(lastMessageId, msg.id);
+                    container.innerHTML += renderMessageBubble(msg, false);
+                });
+                container.scrollTop = container.scrollHeight;
+            }
+        });
+}
+
+function showFilePreview(file) {
+    const preview = document.getElementById('filePreview');
+    const imagePreview = document.getElementById('imagePreview');
+    const pdfPreview = document.getElementById('pdfPreview');
+    const fileName = document.getElementById('fileName');
+    
+    fileName.textContent = file.name;
+    
+    if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            imagePreview.src = e.target.result;
+            imagePreview.style.display = 'block';
+            pdfPreview.style.display = 'none';
+        };
+        reader.readAsDataURL(file);
+    } else if (file.type === 'application/pdf') {
+        imagePreview.style.display = 'none';
+        pdfPreview.style.display = 'flex';
+    }
+    
+    preview.style.display = 'flex';
+}
+
+function clearFileSelection() {
+    selectedFile = null;
+    document.getElementById('fileInput').value = '';
+    document.getElementById('filePreview').style.display = 'none';
+    document.getElementById('imagePreview').style.display = 'none';
+    document.getElementById('pdfPreview').style.display = 'none';
+}
+
+function renderAttachment(msg) {
+    if (!msg.has_attachment) return '';
+    
+    if (msg.is_image) {
+        return `<div class="chat-attachment chat-image">
+            <a href="${msg.attachment_url}" target="_blank">
+                <img src="${msg.attachment_url}" alt="${msg.attachment_name}" loading="lazy">
+            </a>
+        </div>`;
+    } else if (msg.is_pdf) {
+        return `<div class="chat-attachment chat-pdf">
+            <a href="${msg.attachment_url}" target="_blank" class="pdf-link">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M14 14V4.5L9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2M9.5 3A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h5.5z"/>
+                </svg>
+                <span>${msg.attachment_name || 'PDF Document'}</span>
+            </a>
+        </div>`;
+    }
+    return '';
+}
+
+function renderMessageBubble(msg, isMine) {
+    const attachmentHtml = renderAttachment(msg);
+    const messageText = msg.message ? `<div class="chat-bubble-content">${msg.message}</div>` : '';
+    const tickIcon = isMine ? '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M12.354 4.354a.5.5 0 0 0-.708-.708L5 10.293 1.854 7.146a.5.5 0 1 0-.708.708l3.5 3.5a.5.5 0 0 0 .708 0zm-4.208 7-.896-.897.707-.707.543.543 6.646-6.647a.5.5 0 0 1 .708.708l-7 7a.5.5 0 0 1-.708 0"/></svg>' : '';
+    
+    return `
+        <div class="chat-message ${isMine ? 'sent' : 'received'}">
+            <div class="chat-bubble">
+                ${attachmentHtml}
+                ${messageText}
+                <div class="chat-bubble-time">
+                    ${msg.time}
+                    ${tickIcon}
+                </div>
+            </div>
+        </div>
+    `;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+
+{% block title %}Manager Dashboard - LeaveFlow{% endblock %}
+{% block page_title %}👋 Welcome, {{ user.full_name|default:user.email }}!{% endblock %}
+
+{% block content %}
+{% if messages %}
+    {% for message in messages %}
+        {% if 'logged out' not in message|lower and 'signed in as' not in message|lower %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show auto-dismiss-alert" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" title="Close alert" aria-label="Close"></button>
+        </div>
+        {% endif %}
+    {% endfor %}
+{% endif %}
+
+<div class="mb-4">
+    <p class="text-muted mb-0">Manage your team and approve leave requests</p>
+</div>
+
+<div class="container-fluid p-0">
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="stat-card blue">
+                <div class="stat-icon">👥</div>
+                <h6>Team Members</h6>
+                <h2>{{ team_count }}</h2>
+                <small>Under your management</small>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="stat-card yellow">
+                <div class="stat-icon">⏳</div>
+                <h6>Pending Approvals</h6>
+                <h2>{{ pending_count }}</h2>
+                <small>Requires your attention</small>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="stat-card green">
+                <div class="stat-icon">📊</div>
+                <h6>Total Requests</h6>
+                <h2>{{ team_leaves|length }}</h2>
+                <small>This month</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Pending Requests -->
+        <div class="col-lg-8 mb-4">
+            <div class="content-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>Pending Leave Requests</h5>
+                    <a href="{% url 'all_leaves' %}" class="btn btn-primary btn-sm">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if pending_leaves %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Type</th>
+                                    <th>Dates</th>
+                                    <th>Days</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for leave in pending_leaves %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ leave.employee.full_name }}</strong><br>
+                                        <small class="text-muted">{{ leave.employee.email }}</small>
+                                    </td>
+                                    <td>{{ leave.leave_type.name }}</td>
+                                    <td>
+                                        {{ leave.start_date|date:"M d, Y" }}<br>
+                                        <small class="text-muted">to {{ leave.end_date|date:"M d, Y" }}</small>
+                                    </td>
+                                    <td><span class="badge bg-info">{{ leave.total_days }} days</span></td>
+                                    <td>
+                                        <div class="d-flex gap-2">
+                                            <form method="post" action="{% url 'approve_leave' leave.id %}" class="form-inline">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="approve">
+                                                <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Approve this leave request?')">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                                                        <path d="M10.97 4.97a.75.75 0 0 1 1.07 1.05l-3.99 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425z"/>
+                                                    </svg>
+                                                    Approve
+                                                </button>
+                                            </form>
+                                            <form method="post" action="{% url 'approve_leave' leave.id %}" class="form-inline">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="action" value="reject">
+                                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Reject this leave request?')">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                                                        <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708"/>
+                                                    </svg>
+                                                    Reject
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="empty-state">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                            <path d="M10.97 4.97a.235.235 0 0 0-.02.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05"/>
+                        </svg>
+                        <p>No pending leave requests. Great job!</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Team Members -->
+            <div class="content-card mb-4">
+                <div class="card-header">
+                    <h5>Your Team</h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if team_members %}
+                    {% for member in team_members %}
+                    <div class="team-member-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>{{ member.full_name }}</strong><br>
+                                <small class="text-muted">{{ member.email }}</small>
+                            </div>
+                            <span class="badge bg-primary">{{ member.get_role_display }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="empty-state">
+                        <p>No team members assigned yet</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{% endblock %}

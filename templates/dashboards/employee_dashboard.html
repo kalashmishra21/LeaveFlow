@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+
+{% block title %}Employee Dashboard - LeaveFlow{% endblock %}
+{% block page_title %}👋 Welcome, {{ user.full_name|default:user.email }}!{% endblock %}
+
+{% block content %}
+{% if messages %}
+    {% for message in messages %}
+        {% if 'logged out' not in message|lower and 'signed in as' not in message|lower %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show auto-dismiss-alert" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endif %}
+    {% endfor %}
+{% endif %}
+
+<div class="mb-4">
+    <p class="text-muted mb-0">Manage your leave requests and track your balance</p>
+</div>
+
+<div class="container-fluid p-0">
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="stat-card green">
+                <div class="stat-icon">📊</div>
+                <h6>Total Requests</h6>
+                <h2>{{ total_requests }}</h2>
+                <small>All time</small>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="stat-card yellow">
+                <div class="stat-icon">⏳</div>
+                <h6>Pending</h6>
+                <h2>{{ pending_count }}</h2>
+                <small>Awaiting approval</small>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="stat-card blue">
+                <div class="stat-icon">✅</div>
+                <h6>Approved</h6>
+                <h2>{{ approved_count }}</h2>
+                <small>This year</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Leave Requests Table -->
+        <div class="col-lg-8 mb-4">
+            <div class="content-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>My Leave Requests</h5>
+                    <a href="{% url 'request_leave' %}" class="btn btn-success btn-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" class="svg-icon-inline">
+                            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/>
+                        </svg>
+                        Request Leave
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if my_leaves %}
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>Dates</th>
+                                    <th>Days</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for leave in my_leaves %}
+                                <tr>
+                                    <td><strong>{{ leave.leave_type.name }}</strong></td>
+                                    <td>
+                                        {{ leave.start_date|date:"M d, Y" }}<br>
+                                        <small class="text-muted">to {{ leave.end_date|date:"M d, Y" }}</small>
+                                    </td>
+                                    <td><span class="badge bg-info">{{ leave.total_days }} days</span></td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if leave.status == 'pending' %}bg-warning
+                                            {% elif leave.status == 'approved' %}bg-success
+                                            {% elif leave.status == 'rejected' %}bg-danger
+                                            {% else %}bg-secondary{% endif %}">
+                                            {{ leave.get_status_display }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="text-center mt-3">
+                        <a href="{% url 'my_leaves' %}" class="btn btn-outline-success">View All My Leaves</a>
+                    </div>
+                    {% else %}
+                    <div class="empty-state">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5M1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4z"/>
+                        </svg>
+                        <p>No leave requests yet</p>
+                        <a href="{% url 'request_leave' %}" class="btn btn-success">Request Your First Leave</a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Leave Balance -->
+            <div class="content-card mb-4">
+                <div class="card-header">
+                    <h5>Leave Balance</h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if leave_balances %}
+                    {% for balance in leave_balances %}
+                    <div class="balance-item">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div>
+                                <strong>{{ balance.leave_type.name }}</strong><br>
+                                <small>{{ balance.used_days }} used / {{ balance.total_days }} total</small>
+                            </div>
+                            <span class="badge bg-success">{{ balance.remaining_days }} left</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar" role="progressbar" 
+                                 data-width="{{ balance.percentage }}"
+                                 aria-valuenow="50" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100"
+                                 aria-label="{{ balance.leave_type.name }} progress"></div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <div class="empty-state">
+                        <p>No leave balance information available</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.progress-bar[data-width]').forEach(function(bar) {
+        const width = bar.getAttribute('data-width');
+        setTimeout(function() {
+            bar.style.width = width + '%';
+        }, 100);
+    });
+    
+    const alerts = document.querySelectorAll('.auto-dismiss-alert');
+    alerts.forEach(function(alert) {
+        setTimeout(function() {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 2000);
+    });
+});
+</script>
+
+{% endblock %}
+
