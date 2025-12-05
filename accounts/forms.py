@@ -10,6 +10,7 @@ class CustomSignupForm(UserCreationForm):
         choices=[('employee', 'Employee'), ('manager', 'Manager'), ('admin', 'Admin')],
         required=True
     )
+    by_passkey = False  # Required by newer allauth versions
     
     class Meta:
         model = User
