@@ -310,7 +310,9 @@ def profile(request):
                         return redirect('admin_dashboard')
                 user.phone = phone_clean
             
-            # Handle profile picture upload
+            # PROFILE PICTURE UPLOAD - Uses Pillow library to handle image files
+            # request.FILES contains uploaded files from form
+            # Saves to media/profiles/ folder (defined in models.py)
             if 'profile_picture' in request.FILES:
                 user.profile_picture = request.FILES['profile_picture']
             
@@ -334,19 +336,25 @@ def profile(request):
     return render(request, 'account/profile.html', context)
 
 
-# Chat Views
+# ============================================
+# CHAT FEATURE - Real-time messaging with AJAX
+# ============================================
+
 @login_required
 def get_chat_users(request):
-    """Get list of users available for chat"""
+    """
+    CHAT API 1: Get list of users available for chat
+    Returns JSON with user list and unread message count
+    """
+    # Role-based chat access: Employees see managers, Managers see their team
     if request.user.role == 'employee':
-        # Employees can chat with managers
         users = User.objects.filter(role='manager')
     else:
-        # Managers can chat with their team members
         users = User.objects.filter(manager=request.user)
     
     user_list = []
     for user in users:
+        # Count unread messages for badge display
         unread = ChatMessage.objects.filter(sender=user, receiver=request.user, is_read=False).count()
         user_list.append({
             'id': user.id,
@@ -361,16 +369,20 @@ def get_chat_users(request):
 
 @login_required
 def get_messages(request, user_id):
-    """Get chat messages between current user and specified user"""
+    """
+    CHAT API 2: Load chat history between two users
+    Returns all messages with attachment info (images/PDFs)
+    """
     other_user = get_object_or_404(User, id=user_id)
     
-    # Get messages between the two users
+    # Complex query: Get messages where BOTH users are sender OR receiver
+    # This gets the full conversation between two people
     messages_qs = ChatMessage.objects.filter(
         sender__in=[request.user, other_user],
         receiver__in=[request.user, other_user]
     ).order_by('created_at')
     
-    # Mark received messages as read
+    # Mark all received messages as read (removes unread badge)
     ChatMessage.objects.filter(sender=other_user, receiver=request.user, is_read=False).update(is_read=True)
     
     message_list = []
@@ -396,16 +408,20 @@ def get_messages(request, user_id):
 
 @login_required
 def send_message(request):
-    """Send a chat message with optional file attachment"""
+    """
+    CHAT API 3: Send message with optional file attachment (IMAGE/PDF UPLOAD)
+    Handles both text messages and file uploads using multipart/form-data
+    """
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
     
     try:
-        # Check if it's a file upload (multipart form) or JSON
+        # FILE UPLOAD DETECTION: Check if request contains files
+        # multipart/form-data = file upload, application/json = text only
         if request.content_type and 'multipart/form-data' in request.content_type:
             receiver_id = request.POST.get('receiver_id')
             message_text = request.POST.get('message', '').strip()
-            attachment = request.FILES.get('attachment')
+            attachment = request.FILES.get('attachment')  # Get uploaded file
         else:
             data = json.loads(request.body)
             receiver_id = data.get('receiver_id')
@@ -420,11 +436,13 @@ def send_message(request):
         
         receiver = get_object_or_404(User, id=receiver_id)
         
+        # SAVE MESSAGE WITH ATTACHMENT: Pillow handles image processing
+        # Files saved to media/chat_attachments/ folder
         msg = ChatMessage.objects.create(
             sender=request.user,
             receiver=receiver,
             message=message_text,
-            attachment=attachment,
+            attachment=attachment,  # FileField handles upload
             attachment_name=attachment.name if attachment else ''
         )
         
@@ -451,17 +469,22 @@ def send_message(request):
 
 @login_required
 def check_new_messages(request, user_id):
-    """Check for new messages (for polling)"""
-    last_id = request.GET.get('last_id', 0)
+    """
+    CHAT API 4: AJAX POLLING - Check for new messages every 2 seconds
+    This is called repeatedly by JavaScript to get real-time updates
+    """
+    last_id = request.GET.get('last_id', 0)  # Track last message ID to avoid duplicates
     other_user = get_object_or_404(User, id=user_id)
     
+    # Get only NEW messages (id greater than last_id)
+    # This prevents re-fetching old messages
     new_messages = ChatMessage.objects.filter(
         sender=other_user,
         receiver=request.user,
-        id__gt=last_id
+        id__gt=last_id  # Only messages after last_id
     ).order_by('created_at')
     
-    # Mark as read
+    # Mark new messages as read
     new_messages.update(is_read=True)
     
     message_list = []

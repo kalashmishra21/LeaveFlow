@@ -21,26 +21,36 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser, PermissionsMixin):
+    """
+    CUSTOM USER MODEL - Email-based authentication (no username)
+    Extends Django's AbstractBaseUser for custom fields
+    """
     ROLE_CHOICES = [
         ('admin', 'Admin'),
         ('manager', 'Manager'),
         ('employee', 'Employee'),
     ]
     
-    email = models.EmailField(unique=True)
+    email = models.EmailField(unique=True)  # Used for login instead of username
     full_name = models.CharField(max_length=255, blank=True)
     phone = models.CharField(max_length=20, blank=True)
     department = models.CharField(max_length=100, blank=True)
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='employee')
+    
+    # SELF-REFERENCING FOREIGN KEY: User can be manager of other users
+    # Complex relationship: One user (manager) can have many users (employees)
     manager = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='team_members')
+    
+    # PROFILE PICTURE UPLOAD: Uses Pillow library, saves to media/profiles/
     profile_picture = models.ImageField(upload_to='profiles/', null=True, blank=True)
+    
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(default=timezone.now)
     
     objects = UserManager()
     
-    USERNAME_FIELD = 'email'
+    USERNAME_FIELD = 'email'  # Login with email instead of username
     REQUIRED_FIELDS = []
     
     def __str__(self):
@@ -108,12 +118,19 @@ class LeaveBalance(models.Model):
 
 
 class ChatMessage(models.Model):
+    """
+    CHAT MESSAGE MODEL - Stores messages with file attachments
+    """
     sender = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sent_messages')
     receiver = models.ForeignKey(User, on_delete=models.CASCADE, related_name='received_messages')
-    message = models.TextField(blank=True)
+    message = models.TextField(blank=True)  # Text message (optional if file attached)
+    
+    # FILE UPLOAD: Stores images and PDFs in media/chat_attachments/
+    # Uses Pillow library for image processing
     attachment = models.FileField(upload_to='chat_attachments/', null=True, blank=True)
     attachment_name = models.CharField(max_length=255, blank=True)
-    is_read = models.BooleanField(default=False)
+    
+    is_read = models.BooleanField(default=False)  # For unread badge
     created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
@@ -121,6 +138,10 @@ class ChatMessage(models.Model):
     
     @property
     def is_image(self):
+        """
+        FILE TYPE DETECTION: Check if attachment is an image
+        Used in template to show image preview vs download link
+        """
         if self.attachment:
             ext = self.attachment.name.lower().split('.')[-1]
             return ext in ['jpg', 'jpeg', 'png', 'gif', 'webp']
@@ -128,6 +149,10 @@ class ChatMessage(models.Model):
     
     @property
     def is_pdf(self):
+        """
+        FILE TYPE DETECTION: Check if attachment is a PDF
+        Used in template to show PDF icon and download link
+        """
         if self.attachment:
             return self.attachment.name.lower().endswith('.pdf')
         return False

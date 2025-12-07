@@ -196,8 +196,10 @@ function selectUser(userId, userName, userEmail) {
     
     loadMessages(userId);
     
-    if (pollInterval) clearInterval(pollInterval);
-    pollInterval = setInterval(() => checkNewMessages(userId), 2000);
+    // AJAX POLLING: Check for new messages every 2 seconds
+    // This creates real-time chat without WebSockets
+    if (pollInterval) clearInterval(pollInterval);  // Clear old interval
+    pollInterval = setInterval(() => checkNewMessages(userId), 2000);  // Poll every 2 sec
 }
 
 function loadMessages(userId) {
@@ -246,20 +248,24 @@ function sendMessage() {
     const sendBtn = document.getElementById('sendBtn');
     sendBtn.disabled = true;
     
+    // FILE UPLOAD: Use FormData to send files (images/PDFs)
+    // FormData automatically sets Content-Type to multipart/form-data
     const formData = new FormData();
     formData.append('receiver_id', currentChatUser);
     formData.append('message', message);
     
+    // Attach file if selected (from file input)
     if (selectedFile) {
-        formData.append('attachment', selectedFile);
+        formData.append('attachment', selectedFile);  // File object from input
     }
     
+    // AJAX POST: Send message with file to backend
     fetch('/chat/send/', {
         method: 'POST',
         headers: {
-            'X-CSRFToken': '{{ csrf_token }}'
+            'X-CSRFToken': '{{ csrf_token }}'  // CSRF protection
         },
-        body: formData
+        body: formData  // Send as multipart/form-data
     })
     .then(res => res.json())
     .then(data => {
@@ -284,8 +290,10 @@ function sendMessage() {
     });
 }
 
+// POLLING FUNCTION: Called every 2 seconds to check for new messages
+// Tracks lastMessageId to avoid fetching duplicate messages
 function checkNewMessages(userId) {
-    fetch(`/chat/check/${userId}/?last_id=${lastMessageId}`)
+    fetch(`/chat/check/${userId}/?last_id=${lastMessageId}`)  // Only get messages after lastMessageId
         .then(res => res.json())
         .then(data => {
             if (data.messages.length > 0) {
