@@ -13,8 +13,8 @@ class CustomSignupForm(UserCreationForm):
     manager = forms.ModelChoiceField(
         queryset=User.objects.filter(role='manager'),
         required=False,
-        empty_label='Select your manager (for employees)',
-        widget=forms.Select(attrs={'class': 'form-control'})
+        empty_label='Select your manager',
+        widget=forms.Select(attrs={'class': 'form-select', 'id': 'id_manager'})
     )
     by_passkey = False  # Required by newer allauth versions
     
