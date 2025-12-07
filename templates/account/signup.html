@@ -345,11 +345,19 @@
                 
                 <div class="form-group">
                     <label class="form-label" for="signupRole">Role</label>
-                    <select name="role" id="signupRole" class="form-select" required>
+                    <select name="role" id="signupRole" class="form-select" required onchange="toggleManagerField()">
                         <option value="">Select your role</option>
                         <option value="employee">Employee</option>
                         <option value="manager">Manager</option>
                         <option value="admin">Admin</option>
+                    </select>
+                </div>
+                
+                <div class="form-group" id="managerField" style="display:none;">
+                    <label class="form-label" for="signupManager">Select Manager</label>
+                    <select name="manager" id="signupManager" class="form-select">
+                        <option value="">Select your manager</option>
+                        {{ form.manager }}
                     </select>
                 </div>
                 
@@ -387,6 +395,22 @@
                 }
             });
         });
+        
+        // Toggle manager field based on role selection
+        function toggleManagerField() {
+            const role = document.getElementById('signupRole').value;
+            const managerField = document.getElementById('managerField');
+            const managerSelect = document.getElementById('signupManager');
+            
+            if (role === 'employee') {
+                managerField.style.display = 'block';
+                managerSelect.required = true;
+            } else {
+                managerField.style.display = 'none';
+                managerSelect.required = false;
+                managerSelect.value = '';
+            }
+        }
     </script>
 </body>
 </html>

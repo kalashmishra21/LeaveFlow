@@ -10,17 +10,33 @@ class CustomSignupForm(UserCreationForm):
         choices=[('employee', 'Employee'), ('manager', 'Manager'), ('admin', 'Admin')],
         required=True
     )
+    manager = forms.ModelChoiceField(
+        queryset=User.objects.filter(role='manager'),
+        required=False,
+        empty_label='Select your manager (for employees)',
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
     by_passkey = False  # Required by newer allauth versions
     
     class Meta:
         model = User
-        fields = ('email', 'full_name', 'role', 'password1', 'password2')
+        fields = ('email', 'full_name', 'role', 'manager', 'password1', 'password2')
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Update manager queryset to get latest managers
+        self.fields['manager'].queryset = User.objects.filter(role='manager')
     
     def save(self, commit=True):
         user = super().save(commit=False)
         user.email = self.cleaned_data['email']
         user.full_name = self.cleaned_data['full_name']
         user.role = self.cleaned_data['role']
+        
+        # Set manager for employees
+        if user.role == 'employee' and self.cleaned_data.get('manager'):
+            user.manager = self.cleaned_data['manager']
+        
         if user.role == 'admin':
             user.is_staff = True
             user.is_superuser = True
