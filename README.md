@@ -93,13 +93,13 @@ Visit: **http://127.0.0.1:8000/**
 
 ## Render deployment
 
-Use a **persistent PostgreSQL database**. Set `DATABASE_URL` to its connection URL in the Render web service environment. Without it, Render deployments now fail clearly: SQLite on Render's ephemeral filesystem loses users and sessions on restarts and spin-downs.
+Use a **persistent PostgreSQL database**. Set `DATABASE_URL` to its connection URL in the Render web service environment. Without it, the app can deploy with SQLite temporarily, but Render's ephemeral filesystem can lose users and sessions on restarts and spin-downs. Configure PostgreSQL before relying on accounts.
 
 Set these environment variables on the web service:
 
 | Name | Value |
 | --- | --- |
-| `DATABASE_URL` | PostgreSQL connection URL |
+| `DATABASE_URL` | PostgreSQL connection URL for persistent accounts; temporary SQLite fallback if omitted |
 | `SECRET_KEY` | A new, long random Django secret; keep the same value across deploys |
 | `DEBUG` | `False` |
 | `ALLOWED_HOSTS` | `leaveflow-4ppo.onrender.com` (include any custom domain) |

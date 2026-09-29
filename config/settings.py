@@ -68,8 +68,6 @@ DATABASES = {
 DATABASE_URL = os.environ.get('DATABASE_URL')
 if DATABASE_URL:
     DATABASES['default'] = dj_database_url.config(default=DATABASE_URL, conn_max_age=60, conn_health_checks=True)
-elif os.environ.get('RENDER'):
-    raise RuntimeError('DATABASE_URL is required on Render: SQLite data is lost on restarts and spin-downs.')
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
