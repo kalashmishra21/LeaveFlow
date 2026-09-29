@@ -6,7 +6,9 @@ import dj_database_url
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-this-in-production')
-DEBUG = config('DEBUG', default=True, cast=bool)
+DEBUG = config('DEBUG', default=not bool(os.environ.get('RENDER')), cast=bool)
+if os.environ.get('RENDER') and SECRET_KEY == 'django-insecure-change-this-in-production':
+    raise RuntimeError('Set a persistent SECRET_KEY in the Render environment.')
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,.onrender.com', cast=Csv())
 
 INSTALLED_APPS = [
@@ -65,7 +67,9 @@ DATABASES = {
 # Use PostgreSQL on Render if DATABASE_URL is set
 DATABASE_URL = os.environ.get('DATABASE_URL')
 if DATABASE_URL:
-    DATABASES['default'] = dj_database_url.config(default=DATABASE_URL, conn_max_age=600)
+    DATABASES['default'] = dj_database_url.config(default=DATABASE_URL, conn_max_age=60, conn_health_checks=True)
+elif os.environ.get('RENDER'):
+    raise RuntimeError('DATABASE_URL is required on Render: SQLite data is lost on restarts and spin-downs.')
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -110,8 +114,9 @@ ACCOUNT_LOGIN_ON_GET = False
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'noreply@leaveflow.com'
 
-SESSION_COOKIE_SECURE = False
-CSRF_COOKIE_SECURE = False
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = False
 SECURE_BROWSER_XSS_FILTER = True
@@ -120,4 +125,4 @@ CSRF_TRUSTED_ORIGINS = ['http://127.0.0.1:8000', 'http://localhost:8000', 'https
 
 # Session settings for "Remember me"
 SESSION_COOKIE_AGE = 60 * 60 * 24 * 30  # 30 days when "Remember me" is checked
-SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Don't expire on browser close
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # allauth handles the unchecked remember box

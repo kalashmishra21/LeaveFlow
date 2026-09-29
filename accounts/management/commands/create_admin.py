@@ -7,8 +7,12 @@ class Command(BaseCommand):
     help = 'Create admin user from environment variables'
 
     def handle(self, *args, **kwargs):
-        admin_email = os.environ.get('ADMIN_EMAIL', 'admin@leaveflow.com')
-        admin_password = os.environ.get('ADMIN_PASSWORD', 'admin123')
+        admin_email = os.environ.get('ADMIN_EMAIL')
+        admin_password = os.environ.get('ADMIN_PASSWORD')
+
+        if not admin_email or not admin_password:
+            self.stdout.write('Skipping admin creation (set ADMIN_EMAIL and ADMIN_PASSWORD to create one).')
+            return
         
         if User.objects.filter(email=admin_email).exists():
             self.stdout.write(self.style.WARNING(f'→ Admin user already exists: {admin_email}'))
@@ -22,4 +26,3 @@ class Command(BaseCommand):
         )
         
         self.stdout.write(self.style.SUCCESS(f'✓ Admin user created: {admin_email}'))
-        self.stdout.write(self.style.SUCCESS(f'  Password: {admin_password}'))

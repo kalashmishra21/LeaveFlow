@@ -234,6 +234,47 @@ class AuthenticationViewTests(TestCase):
         self.assertEqual(response.status_code, 302)
 
 
+class AuthenticationFlowTests(TestCase):
+    def test_signup_login_logout_and_remember_me(self):
+        response = self.client.post('/accounts/signup/', {
+            'email': 'new@example.com', 'full_name': 'New Employee',
+            'role': 'employee', 'password1': 'Strong-password-832!',
+            'password2': 'Strong-password-832!',
+        })
+        self.assertEqual(response.status_code, 302, response.content.decode()[:500])
+        user = User.objects.get(email='new@example.com')
+        self.assertEqual(user.full_name, 'New Employee')
+        self.assertEqual(user.role, 'employee')
+        self.assertFalse(user.is_staff)
+        self.client.get('/accounts/logout/')
+        response = self.client.post('/accounts/login/', {
+            'login': 'new@example.com', 'password': 'Strong-password-832!',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(self.client.session.get('_auth_user_id'))
+
+    def test_public_signup_cannot_create_admin(self):
+        response = self.client.post('/accounts/signup/', {
+            'email': 'attacker@example.com', 'full_name': 'Attacker',
+            'role': 'admin', 'password1': 'Strong-password-832!',
+            'password2': 'Strong-password-832!',
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(User.objects.filter(email='attacker@example.com').exists())
+
+    def test_admin_command_requires_explicit_credentials(self):
+        from django.core.management import call_command
+        from unittest.mock import patch
+        with patch.dict('os.environ', {}, clear=True):
+            call_command('create_admin')
+        self.assertFalse(User.objects.filter(role='admin').exists())
+
+    def test_profile_page_loads(self):
+        user = User.objects.create_user(email='profile@example.com', password='Strong-password-832!')
+        self.client.force_login(user)
+        self.assertEqual(self.client.get('/profile/').status_code, 200)
+
+
 class DashboardViewTests(TestCase):
     """Test cases for dashboard views"""
     
@@ -314,6 +355,34 @@ class LeaveRequestViewTests(TestCase):
         self.client.login(username='employee@test.com', password='testpass123')
         response = self.client.get('/leaves/my-leaves/')
         self.assertEqual(response.status_code, 200)
+
+    def test_leave_duration_is_calculated_on_server(self):
+        self.client.force_login(self.employee)
+        response = self.client.post('/leaves/request/', {
+            'manager': self.manager.pk, 'leave_type': self.leave_type.pk,
+            'start_date': '2026-10-01', 'end_date': '2026-10-03',
+            'total_days': 999, 'reason': 'Travel',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(LeaveRequest.objects.get(employee=self.employee).total_days, 3)
+
+    def test_repeated_approval_does_not_double_count_balance(self):
+        leave = LeaveRequest.objects.create(
+            employee=self.employee, leave_type=self.leave_type,
+            start_date=date(2026, 10, 1), end_date=date(2026, 10, 3),
+            total_days=3, reason='Travel',
+        )
+        balance = LeaveBalance.objects.create(
+            employee=self.employee, leave_type=self.leave_type,
+            year=2026, total_days=12,
+        )
+        self.client.force_login(self.manager)
+        url = reverse('approve_leave', args=[leave.pk])
+        self.assertEqual(self.client.post(url, {'action': 'approve'}).status_code, 302)
+        self.assertEqual(self.client.post(url, {'action': 'approve'}).status_code, 302)
+        balance.refresh_from_db()
+        self.assertEqual(balance.used_days, 3)
+        self.assertEqual(self.client.get(url).status_code, 405)
 
 
 class ChatViewTests(TestCase):

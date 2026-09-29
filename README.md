@@ -91,6 +91,26 @@ python manage.py runserver
 
 Visit: **http://127.0.0.1:8000/**
 
+## Render deployment
+
+Use a **persistent PostgreSQL database**. Set `DATABASE_URL` to its connection URL in the Render web service environment. Without it, Render deployments now fail clearly: SQLite on Render's ephemeral filesystem loses users and sessions on restarts and spin-downs.
+
+Set these environment variables on the web service:
+
+| Name | Value |
+| --- | --- |
+| `DATABASE_URL` | PostgreSQL connection URL |
+| `SECRET_KEY` | A new, long random Django secret; keep the same value across deploys |
+| `DEBUG` | `False` |
+| `ALLOWED_HOSTS` | `leaveflow-4ppo.onrender.com` (include any custom domain) |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Optional, only for initial admin creation; choose a strong password |
+
+Build command: `bash build.sh`. Start command: `gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 2 --timeout 90`.
+
+The build creates an admin only when both admin environment variables are set. Change or remove `ADMIN_PASSWORD` in Render after the first deploy. Existing accounts remain in PostgreSQL through restarts. Accounts previously stored in Render's SQLite filesystem cannot be restored after that instance has restarted unless you already have a backup.
+
+The scheduled GitHub Actions workflow calls `/health/` about every five minutes. Scheduled jobs can be delayed or skipped; a paid always-on Render instance is the reliable way to avoid the free tier's cold-start loading page. Keeping a free service awake consumes its monthly free instance hours. Render's free PostgreSQL databases expire after 30 days, so use a durable database for long-term accounts. Files uploaded to `/media/` are still stored on the ephemeral filesystem; use persistent object storage before relying on profile pictures or chat attachments across deploys.
+
 
 
 ---

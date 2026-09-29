@@ -199,7 +199,9 @@ function selectUser(userId, userName, userEmail) {
     // AJAX POLLING: Check for new messages every 2 seconds
     // This creates real-time chat without WebSockets
     if (pollInterval) clearInterval(pollInterval);  // Clear old interval
-    pollInterval = setInterval(() => checkNewMessages(userId), 2000);  // Poll every 2 sec
+    pollInterval = setInterval(() => {
+        if (!document.hidden && currentChatUser === userId) checkNewMessages(userId);
+    }, 5000);
 }
 
 function loadMessages(userId) {

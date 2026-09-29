@@ -3,11 +3,18 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout
 from django.contrib import messages
 from django.utils import timezone
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_POST
+from django.db import transaction
+from django.db.models import Count, Q
+from django.db.models import F
 import json
 from .forms import LeaveRequestForm, ProfileUpdateForm
 from .models import User, LeaveRequest, LeaveBalance, LeaveType, ChatMessage
+
+
+def health(request):
+    return HttpResponse('ok', content_type='text/plain')
 
 
 def home(request):
@@ -108,6 +115,8 @@ def employee_dashboard(request):
 
 @login_required
 def request_leave(request):
+    if request.user.role != 'employee':
+        return redirect('home')
     if request.method == 'POST':
         form = LeaveRequestForm(request.POST)
         if form.is_valid():
@@ -160,6 +169,7 @@ def all_leaves(request):
 
 
 @login_required
+@require_POST
 def approve_leave(request, leave_id):
     # Only managers can approve/reject leaves, not admin
     if request.user.role != 'manager':
@@ -168,14 +178,18 @@ def approve_leave(request, leave_id):
             return redirect('admin_dashboard')
         return redirect('account_login')
     
-    leave_request = get_object_or_404(LeaveRequest, id=leave_id)
+    leave_request = get_object_or_404(LeaveRequest.objects.select_related('employee'), id=leave_id)
     
     # Verify the leave request is from manager's team
     if leave_request.employee.manager != request.user:
         messages.error(request, 'You can only approve leaves from your team members.')
         return redirect('manager_dashboard')
     
-    if request.method == 'POST':
+    with transaction.atomic():
+        leave_request = LeaveRequest.objects.select_for_update().get(pk=leave_id)
+        if leave_request.status != 'pending':
+            messages.error(request, 'This leave request has already been reviewed.')
+            return redirect('manager_dashboard')
         action = request.POST.get('action')
         
         if action == 'approve':
@@ -190,8 +204,7 @@ def approve_leave(request, leave_id):
                     leave_type=leave_request.leave_type,
                     year=timezone.now().year
                 )
-                balance.used_days += leave_request.total_days
-                balance.save()
+                LeaveBalance.objects.filter(pk=balance.pk).update(used_days=F('used_days') + leave_request.total_days)
             except LeaveBalance.DoesNotExist:
                 pass
         
@@ -207,6 +220,7 @@ def approve_leave(request, leave_id):
 
 
 @login_required
+@require_POST
 def cancel_leave(request, leave_id):
     leave_request = get_object_or_404(LeaveRequest, id=leave_id, employee=request.user)
     
@@ -353,15 +367,16 @@ def get_chat_users(request):
         users = User.objects.filter(manager=request.user)
     
     user_list = []
+    users = users.annotate(unread_count=Count(
+        'sent_messages', filter=Q(sent_messages__receiver=request.user, sent_messages__is_read=False)
+    ))
     for user in users:
-        # Count unread messages for badge display
-        unread = ChatMessage.objects.filter(sender=user, receiver=request.user, is_read=False).count()
         user_list.append({
             'id': user.id,
             'name': user.full_name or user.email,
             'email': user.email,
             'role': user.role,
-            'unread': unread
+            'unread': user.unread_count
         })
     
     return JsonResponse({'users': user_list})
@@ -380,7 +395,7 @@ def get_messages(request, user_id):
     messages_qs = ChatMessage.objects.filter(
         sender__in=[request.user, other_user],
         receiver__in=[request.user, other_user]
-    ).order_by('created_at')
+    ).select_related('sender').order_by('created_at')
     
     # Mark all received messages as read (removes unread badge)
     ChatMessage.objects.filter(sender=other_user, receiver=request.user, is_read=False).update(is_read=True)

@@ -1,0 +1,15 @@
+name: Render health ping
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check LeaveFlow health
+        run: curl --fail --silent --show-error --max-time 90 --retry 2 --retry-delay 10 https://leaveflow-4ppo.onrender.com/health/
