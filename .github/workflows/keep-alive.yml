@@ -2,7 +2,8 @@ name: Render health ping
 
 on:
   schedule:
-    - cron: '*/5 * * * *'
+    # Keep away from the top of the hour, when GitHub scheduled runs are busiest.
+    - cron: '2-59/5 * * * *'
   workflow_dispatch:
 
 permissions: {}
@@ -10,6 +11,15 @@ permissions: {}
 jobs:
   ping:
     runs-on: ubuntu-latest
+    timeout-minutes: 4
     steps:
       - name: Check LeaveFlow health
-        run: curl --fail --silent --show-error --max-time 90 --retry 2 --retry-delay 10 https://leaveflow-4ppo.onrender.com/health/
+        env:
+          HEALTH_URL: https://leaveflow-4ppo.onrender.com/health/
+        run: |
+          curl \
+            --silent --show-error --fail-with-body \
+            --connect-timeout 15 --max-time 70 \
+            --retry 5 --retry-delay 10 --retry-max-time 120 \
+            --write-out '\nhealth HTTP %{http_code}; total %{time_total}s\n' \
+            "$HEALTH_URL"
